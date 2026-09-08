@@ -1,0 +1,14 @@
+{
+    "name": "pc/product-cms",
+    "description": "Product CMS using PHP Smarty MySQL MVC",
+    "type": "project",
+    "require": {
+        "smarty/smarty": "^5.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Config\\": "config/"
+        }
+    }
+}
