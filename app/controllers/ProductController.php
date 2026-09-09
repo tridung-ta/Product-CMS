@@ -156,7 +156,7 @@ $smarty->display('product_list.tpl');
         exit;
     }
 
-    $id = (int) ($_POST['id'] ?? 0);
+    $id = (int) ($_GET['id'] ?? 0);
 
     if ($id <= 0) {
         header('Location: /');
