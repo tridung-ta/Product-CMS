@@ -19,6 +19,8 @@ class ProductController
     }
 
     $productModel = new Product();
+    
+    $summary = $productModel->getSummary();
 
     // Từ khóa tìm kiếm
     $keyword = trim($_GET['keyword'] ?? '');
@@ -54,21 +56,29 @@ class ProductController
     $smarty = SmartyConfig::getSmarty();
 
     $smarty->assign('products', $products);
-    $smarty->assign('username', $_SESSION['username'] ?? '');
+$smarty->assign('username', $_SESSION['username'] ?? '');
 
-    // Dữ liệu phân trang
-    $smarty->assign('page', $page);
-    $smarty->assign('totalPages', $totalPages);
-    $smarty->assign('totalProducts', $totalProducts);
-    $smarty->assign('keyword', $keyword);
+$smarty->assign('page', $page);
+$smarty->assign('totalPages', $totalPages);
+$smarty->assign('totalProducts', $totalProducts);
+$smarty->assign('keyword', $keyword);
 
-    // Thông báo thành công
-    $success = $_SESSION['success'] ?? '';
-    unset($_SESSION['success']);
+$smarty->assign(
+    'totalQuantity',
+    (int) $summary['total_quantity']
+);
 
-    $smarty->assign('success', $success);
+$smarty->assign(
+    'totalValue',
+    (float) $summary['total_value']
+);
 
-    $smarty->display('product_list.tpl');
+$success = $_SESSION['success'] ?? '';
+unset($_SESSION['success']);
+
+$smarty->assign('success', $success);
+
+$smarty->display('product_list.tpl');
 }
 
     public function create(): void

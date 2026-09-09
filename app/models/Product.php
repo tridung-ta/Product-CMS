@@ -16,6 +16,7 @@ class Product
     }
 
     public function getAll(): array
+    
     {
         $sql = "SELECT * FROM products ORDER BY id DESC";
 
@@ -44,6 +45,23 @@ class Product
             ':description' => $description
         ]);
     }
+    
+    public function getSummary(): array
+{
+    $sql = "SELECT
+                COUNT(*) AS total_products,
+                COALESCE(SUM(quantity), 0) AS total_quantity,
+                COALESCE(SUM(price * quantity), 0) AS total_value
+            FROM products";
+
+    $stmt = $this->db->query($sql);
+
+    return $stmt->fetch() ?: [
+        'total_products' => 0,
+        'total_quantity' => 0,
+        'total_value' => 0
+    ];
+}
 
     public function getById(int $id): ?array
     {
