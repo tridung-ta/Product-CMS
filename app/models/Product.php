@@ -2,187 +2,142 @@
 
 namespace App\Models;
 
-use Config\Database;
-use PDO;
+use App\Database\Model;
+use InvalidArgumentException;
 
-class Product
+class Product extends Model
 {
-    private PDO $db;
-
-    public function __construct()
-    {
-        $database = new Database();
-        $this->db = $database->connect();
-    }
+    private const COLUMNS = 'id, name, price, quantity, description, created_at, updated_at';
 
     public function getAll(): array
-    
     {
-        $sql = "SELECT * FROM products ORDER BY id DESC";
-
-        $stmt = $this->db->query($sql);
-
-        return $stmt->fetchAll();
+        return $this->executeQuery(
+            'SELECT ' . self::COLUMNS . ' FROM products ORDER BY id DESC'
+        )->fetchAll();
     }
 
     public function insert(
         string $name,
-        float $price,
+        string|float|int $price,
         int $quantity,
         string $description
     ): bool {
-        $sql = "INSERT INTO products
-                (name, price, quantity, description)
-                VALUES
-                (:name, :price, :quantity, :description)";
+        $this->executeQuery(
+            'INSERT INTO products (name, price, quantity, description)
+             VALUES (:name, :price, :quantity, :description)',
+            [
+                ':name' => $name,
+                ':price' => (string) $price,
+                ':quantity' => $quantity,
+                ':description' => $description,
+            ]
+        );
 
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':name' => $name,
-            ':price' => $price,
-            ':quantity' => $quantity,
-            ':description' => $description
-        ]);
+        return true;
     }
-    
+
     public function getSummary(): array
-{
-    $sql = "SELECT
-                COUNT(*) AS total_products,
-                COALESCE(SUM(quantity), 0) AS total_quantity,
-                COALESCE(SUM(price * quantity), 0) AS total_value
-            FROM products";
-
-    $stmt = $this->db->query($sql);
-
-    return $stmt->fetch() ?: [
-        'total_products' => 0,
-        'total_quantity' => 0,
-        'total_value' => 0
-    ];
-}
+    {
+        return $this->executeQuery(
+            'SELECT COUNT(*) AS total_products,
+                    COALESCE(SUM(quantity), 0) AS total_quantity,
+                    COALESCE(SUM(price * quantity), 0) AS total_value
+             FROM products'
+        )->fetch() ?: [
+            'total_products' => 0,
+            'total_quantity' => 0,
+            'total_value' => 0,
+        ];
+    }
 
     public function getById(int $id): ?array
     {
-        $sql = "SELECT * FROM products WHERE id = :id";
-
-        $stmt = $this->db->prepare($sql);
-
-        $stmt->execute([
-            ':id' => $id
-        ]);
-
-        $product = $stmt->fetch();
-
-        return $product ?: null;
+        return $this->executeQuery(
+            'SELECT ' . self::COLUMNS . ' FROM products WHERE id = :id',
+            [':id' => $id]
+        )->fetch() ?: null;
     }
 
     public function update(
         int $id,
         string $name,
-        float $price,
+        string|float|int $price,
         int $quantity,
         string $description
     ): bool {
-        $sql = "UPDATE products
-                SET name = :name,
-                    price = :price,
-                    quantity = :quantity,
-                    description = :description
-                WHERE id = :id";
+        $this->executeQuery(
+            'UPDATE products
+             SET name = :name, price = :price, quantity = :quantity, description = :description
+             WHERE id = :id',
+            [
+                ':id' => $id,
+                ':name' => $name,
+                ':price' => (string) $price,
+                ':quantity' => $quantity,
+                ':description' => $description,
+            ]
+        );
 
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':id' => $id,
-            ':name' => $name,
-            ':price' => $price,
-            ':quantity' => $quantity,
-            ':description' => $description
-        ]);
+        return true;
     }
 
     public function delete(int $id): bool
     {
-        $sql = "DELETE FROM products WHERE id = :id";
-
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':id' => $id
-        ]);
+        return $this->executeQuery(
+            'DELETE FROM products WHERE id = :id',
+            [':id' => $id]
+        )->rowCount() > 0;
     }
+
     public function search(string $keyword): array
-{
-    $sql = "SELECT * FROM products
-            WHERE name LIKE :keyword
-               OR description LIKE :keyword
-            ORDER BY id DESC";
+    {
+        [$filter, $parameters] = $this->searchFilter($keyword);
 
-    $stmt = $this->db->prepare($sql);
-
-    $stmt->execute([
-        ':keyword' => '%' . $keyword . '%'
-    ]);
-
-    return $stmt->fetchAll();
-}
-
-public function getTotal(string $keyword = ''): int
-{
-    if ($keyword !== '') {
-        $sql = "SELECT COUNT(*) FROM products
-                WHERE name LIKE :keyword
-                   OR description LIKE :keyword";
-
-        $stmt = $this->db->prepare($sql);
-
-        $stmt->execute([
-            ':keyword' => '%' . $keyword . '%'
-        ]);
-    } else {
-        $sql = "SELECT COUNT(*) FROM products";
-
-        $stmt = $this->db->query($sql);
+        return $this->executeQuery(
+            'SELECT ' . self::COLUMNS . ' FROM products' . $filter . ' ORDER BY id DESC',
+            $parameters
+        )->fetchAll();
     }
 
-    return (int) $stmt->fetchColumn();
-}
+    public function getTotal(string $keyword = ''): int
+    {
+        [$filter, $parameters] = $this->searchFilter($keyword);
 
-public function getPaginated(
-    int $limit,
-    int $offset,
-    string $keyword = ''
-): array {
-    if ($keyword !== '') {
-        $sql = "SELECT * FROM products
-                WHERE name LIKE :keyword
-                   OR description LIKE :keyword
-                ORDER BY id DESC
-                LIMIT :limit OFFSET :offset";
-
-        $stmt = $this->db->prepare($sql);
-
-        $stmt->bindValue(
-            ':keyword',
-            '%' . $keyword . '%',
-            PDO::PARAM_STR
-        );
-    } else {
-        $sql = "SELECT * FROM products
-                ORDER BY id DESC
-                LIMIT :limit OFFSET :offset";
-
-        $stmt = $this->db->prepare($sql);
+        return (int) $this->executeQuery(
+            'SELECT COUNT(*) FROM products' . $filter,
+            $parameters
+        )->fetchColumn();
     }
 
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    public function getPaginated(int $limit, int $offset, string $keyword = ''): array
+    {
+        if ($limit < 1 || $offset < 0) {
+            throw new InvalidArgumentException('Pagination requires a positive limit and a non-negative offset.');
+        }
 
-    $stmt->execute();
+        [$filter, $parameters] = $this->searchFilter($keyword);
+        $parameters[':limit'] = $limit;
+        $parameters[':offset'] = $offset;
 
-    return $stmt->fetchAll();
-}
+        return $this->executeQuery(
+            'SELECT ' . self::COLUMNS . ' FROM products' . $filter .
+            ' ORDER BY id DESC LIMIT :limit OFFSET :offset',
+            $parameters
+        )->fetchAll();
+    }
 
+    private function searchFilter(string $keyword): array
+    {
+        if ($keyword === '') {
+            return ['', []];
+        }
+
+        return [
+            ' WHERE (name LIKE :name_keyword OR description LIKE :description_keyword)',
+            [
+                ':name_keyword' => '%' . $keyword . '%',
+                ':description_keyword' => '%' . $keyword . '%',
+            ],
+        ];
+    }
 }

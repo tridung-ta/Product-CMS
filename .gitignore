@@ -1,4 +1,7 @@
 /vendor/
+/config/database.local.php
+/app/views/templates_c/
+/var/
 /.env
 /.env.*
 !.env.example

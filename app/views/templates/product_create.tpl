@@ -6,255 +6,7 @@
 
     <title>Thêm sản phẩm - Product CMS</title>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            color: #333;
-        }
-
-        /* HEADER */
-        .header {
-            background: #212529;
-            color: white;
-            padding: 18px 40px;
-
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h2 {
-            margin: 0;
-            font-size: 22px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logout {
-            color: white;
-            text-decoration: none;
-            background: #dc3545;
-            padding: 8px 14px;
-            border-radius: 5px;
-        }
-
-        .logout:hover {
-            background: #bb2d3b;
-        }
-
-        /* CONTAINER */
-        .container {
-            max-width: 850px;
-            margin: 35px auto;
-            padding: 0 20px;
-        }
-
-        /* TITLE */
-        .title-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .title-row h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .back-button {
-            display: inline-block;
-            background: #6c757d;
-            color: white;
-            padding: 10px 16px;
-            text-decoration: none;
-            border-radius: 6px;
-        }
-
-        .back-button:hover {
-            background: #5c636a;
-        }
-
-        /* FORM CARD */
-        .form-card {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .form-description {
-            margin-top: 0;
-            margin-bottom: 25px;
-            color: #6c757d;
-            font-size: 14px;
-        }
-
-        /* ERROR */
-        .error {
-            background: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
-
-            padding: 12px 16px;
-            margin-bottom: 20px;
-
-            border-radius: 6px;
-        }
-
-        /* FORM */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 7px;
-
-            font-weight: bold;
-            color: #343a40;
-        }
-
-        .required {
-            color: #dc3545;
-        }
-
-        input,
-        textarea {
-            width: 100%;
-
-            padding: 11px 13px;
-
-            border: 1px solid #ced4da;
-            border-radius: 6px;
-
-            font-family: Arial, sans-serif;
-            font-size: 15px;
-
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input:focus,
-        textarea:focus {
-            outline: none;
-
-            border-color: #0d6efd;
-
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
-        }
-
-        textarea {
-            min-height: 130px;
-            resize: vertical;
-        }
-
-        .help-text {
-            display: block;
-
-            margin-top: 5px;
-
-            font-size: 13px;
-            color: #6c757d;
-        }
-
-        /* BUTTONS */
-        .buttons {
-            display: flex;
-            gap: 10px;
-
-            margin-top: 25px;
-            padding-top: 20px;
-
-            border-top: 1px solid #eee;
-        }
-
-        .submit-button {
-            border: none;
-
-            background: #198754;
-            color: white;
-
-            padding: 11px 20px;
-
-            border-radius: 6px;
-
-            cursor: pointer;
-
-            font-size: 15px;
-            font-weight: bold;
-        }
-
-        .submit-button:hover {
-            background: #157347;
-        }
-
-        .cancel-button {
-            display: inline-block;
-
-            background: #6c757d;
-            color: white;
-
-            padding: 11px 20px;
-
-            text-decoration: none;
-
-            border-radius: 6px;
-
-            font-size: 15px;
-        }
-
-        .cancel-button:hover {
-            background: #5c636a;
-        }
-
-        /* MOBILE */
-        @media (max-width: 768px) {
-
-            .header {
-                padding: 15px 20px;
-            }
-
-            .user-info span {
-                display: none;
-            }
-
-            .container {
-                margin-top: 25px;
-            }
-
-            .title-row {
-                flex-direction: column;
-                align-items: flex-start;
-
-                gap: 15px;
-            }
-
-            .form-card {
-                padding: 20px;
-            }
-
-            .buttons {
-                flex-direction: column;
-            }
-
-            .submit-button,
-            .cancel-button {
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/product_create.css">
 </head>
 
 <body>
@@ -271,9 +23,10 @@
             <strong>{$username|escape}</strong>
         </span>
 
-        <a href="/logout" class="logout">
-            Đăng xuất
-        </a>
+        <form method="POST" action="{$logoutUrl|escape}">
+            <input type="hidden" name="csrf_token" value="{$csrfToken|escape}">
+            <button type="submit" class="logout">Đăng xuất</button>
+        </form>
 
     </div>
 
@@ -288,7 +41,7 @@
 
         <h1>Thêm sản phẩm</h1>
 
-        <a href="/" class="back-button">
+        <a href="{$listUrl|escape}" class="back-button">
             ← Quay lại
         </a>
 
@@ -306,7 +59,7 @@
         <!-- ERROR -->
         {if $error}
 
-            <div class="error">
+            <div class="error" role="alert">
                 {$error|escape}
             </div>
 
@@ -315,8 +68,9 @@
 
         <form
             method="POST"
-            action="/products/create"
+            action="{$createUrl|escape}"
         >
+            <input type="hidden" name="csrf_token" value="{$csrfToken|escape}">
 
             <!-- NAME -->
             <div class="form-group">
@@ -330,6 +84,7 @@
                     type="text"
                     id="name"
                     name="name"
+                    value="{$product.name|escape}"
                     placeholder="Nhập tên sản phẩm"
                     required
                 >
@@ -349,6 +104,7 @@
                     type="number"
                     id="price"
                     name="price"
+                    value="{$product.price|escape}"
                     min="0"
                     step="0.01"
                     placeholder="Nhập giá sản phẩm"
@@ -374,7 +130,9 @@
                     type="number"
                     id="quantity"
                     name="quantity"
+                    value="{$product.quantity|escape}"
                     min="0"
+                    step="1"
                     placeholder="Nhập số lượng"
                     required
                 >
@@ -393,7 +151,7 @@
                     id="description"
                     name="description"
                     placeholder="Nhập mô tả sản phẩm..."
-                ></textarea>
+                >{$product.description|escape}</textarea>
 
             </div>
 
@@ -409,7 +167,7 @@
                 </button>
 
                 <a
-                    href="/"
+                    href="{$listUrl|escape}"
                     class="cancel-button"
                 >
                     Hủy

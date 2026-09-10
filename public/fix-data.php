@@ -1,5 +1,15 @@
 <?php
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+if (!in_array('--apply', $argv, true)) {
+    echo "Tiện ích này sửa mô tả sản phẩm ID 1 và 2. Chạy với --apply để thực hiện.\n";
+    exit;
+}
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Config\Database;

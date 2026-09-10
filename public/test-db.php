@@ -1,5 +1,10 @@
 <?php
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Config\Database;
@@ -8,16 +13,10 @@ try {
     $database = new Database();
     $pdo = $database->connect();
 
-    echo "<h1>Kết nối MySQL thành công!</h1>";
-
-    $stmt = $pdo->query("SELECT * FROM products");
-
-    echo "<h2>Danh sách sản phẩm:</h2>";
-
-    echo "<pre>";
-    print_r($stmt->fetchAll());
-    echo "</pre>";
+    $pdo->query('SELECT 1');
+    echo "Kết nối MySQL thành công!\n";
 
 } catch (Exception $e) {
-    echo "Lỗi: " . $e->getMessage();
+    fwrite(STDERR, "Không thể kết nối MySQL. Kiểm tra cấu hình database.\n");
+    exit(1);
 }

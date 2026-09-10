@@ -3,12 +3,25 @@
     "description": "Product CMS using PHP Smarty MySQL MVC",
     "type": "project",
     "require": {
+        "php": "^8.2",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-mbstring": "*",
         "smarty/smarty": "^5.8"
     },
     "autoload": {
         "psr-4": {
+            "App\\Controllers\\": "app/controllers/",
+            "App\\Models\\": "app/models/",
+            "App\\Security\\": "app/security/",
+            "App\\Database\\": "app/database/",
+            "App\\Http\\": "app/http/",
+            "App\\Validation\\": "app/validation/",
             "App\\": "app/",
             "Config\\": "config/"
         }
+    },
+    "scripts": {
+        "test": "@php tests/run.php"
     }
 }

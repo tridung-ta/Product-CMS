@@ -2,269 +2,143 @@
 
 namespace App\Controllers;
 
+use App\Http\HttpException;
+use App\Http\Pagination;
+use App\Http\Request;
+use App\Http\Response;
+use App\Http\Url;
 use App\Models\Product;
-use Config\SmartyConfig;
+use App\Security\Csrf;
+use App\Validation\ProductInput;
+use PDOException;
 
-class ProductController
+class ProductController extends Controller
 {
+    public function __construct(private ?Product $model = null)
+    {
+    }
+
+    private function products(): Product
+    {
+        return $this->model ??= new Product();
+    }
+
     public function index(): void
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    {
+        Request::requireMethods(['GET']);
+        $this->requireAuth();
+        $keyword = trim(Request::queryString('keyword'));
+        $summary = $this->products()->getSummary();
+        $total = $keyword === '' ? (int) $summary['total_products'] : $this->products()->getTotal($keyword);
+        $pagination = new Pagination($total, Request::queryInt('page', 1));
+        $success = $_SESSION['success'] ?? '';
+        unset($_SESSION['success']);
+
+        $this->render('product_list.tpl', [
+            'products' => $this->products()->getPaginated($pagination->perPage, $pagination->offset, $keyword),
+            'keyword' => $keyword,
+            'totalProducts' => $total,
+            'summaryProducts' => (int) $summary['total_products'],
+            'totalQuantity' => $summary['total_quantity'],
+            'totalValue' => $summary['total_value'],
+            'page' => $pagination->page,
+            'totalPages' => $pagination->totalPages,
+            'pagination' => $pagination->links($keyword),
+            'previousUrl' => $pagination->previousUrl($keyword),
+            'nextUrl' => $pagination->nextUrl($keyword),
+            'success' => $success,
+        ]);
     }
-
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit;
-    }
-
-    $productModel = new Product();
-    
-    $summary = $productModel->getSummary();
-
-    // Từ khóa tìm kiếm
-    $keyword = trim($_GET['keyword'] ?? '');
-
-    // Trang hiện tại
-    $page = max(1, (int) ($_GET['page'] ?? 1));
-
-    // Số sản phẩm trên mỗi trang
-    $limit = 5;
-
-    // Vị trí bắt đầu
-    $offset = ($page - 1) * $limit;
-
-    // Tổng số sản phẩm phù hợp với từ khóa
-    $totalProducts = $productModel->getTotal($keyword);
-
-    // Tổng số trang
-    $totalPages = (int) ceil($totalProducts / $limit);
-
-    // Nếu page vượt quá số trang thì đưa về trang cuối
-    if ($totalPages > 0 && $page > $totalPages) {
-        $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-    }
-
-    // Lấy sản phẩm theo trang
-    $products = $productModel->getPaginated(
-        $limit,
-        $offset,
-        $keyword
-    );
-
-    $smarty = SmartyConfig::getSmarty();
-
-    $smarty->assign('products', $products);
-$smarty->assign('username', $_SESSION['username'] ?? '');
-
-$smarty->assign('page', $page);
-$smarty->assign('totalPages', $totalPages);
-$smarty->assign('totalProducts', $totalProducts);
-$smarty->assign('keyword', $keyword);
-
-$smarty->assign(
-    'totalQuantity',
-    (int) $summary['total_quantity']
-);
-
-$smarty->assign(
-    'totalValue',
-    (float) $summary['total_value']
-);
-
-$success = $_SESSION['success'] ?? '';
-unset($_SESSION['success']);
-
-$smarty->assign('success', $success);
-
-$smarty->display('product_list.tpl');
-}
 
     public function create(): void
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    {
+        Request::requireMethods(['GET', 'POST']);
+        $this->requireAuth();
+        $product = ProductInput::fromArray([]);
+        $error = '';
 
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit;
-    }
-
-    $error = '';
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-        $name = trim($_POST['name'] ?? '');
-        $price = (float) ($_POST['price'] ?? 0);
-        $quantity = (int) ($_POST['quantity'] ?? 0);
-        $description = trim($_POST['description'] ?? '');
-
-        if ($name === '') {
-
-            $error = 'Vui lòng nhập tên sản phẩm.';
-
-        } elseif ($price < 0) {
-
-            $error = 'Giá sản phẩm không hợp lệ.';
-
-        } elseif ($quantity < 0) {
-
-            $error = 'Số lượng không hợp lệ.';
-
-        } else {
-
-            $productModel = new Product();
-
-            try {
-
-                $productModel->insert(
-                    $name,
-                    $price,
-                    $quantity,
-                    $description
-                );
-
-                $_SESSION['success'] = 'created';
-
-                header('Location: /');
-                exit;
-
-            } catch (\PDOException $e) {
-
-                $error = 'Không thể thêm sản phẩm. Vui lòng kiểm tra lại dữ liệu.';
+        if (Request::method() === 'POST') {
+            Csrf::requirePost();
+            $product = ProductInput::fromArray($_POST);
+            $error = ProductInput::error($product);
+            if ($error === '') {
+                try {
+                    $this->products()->insert(
+                        $product['name'], $product['price'], (int) $product['quantity'], $product['description']
+                    );
+                    $this->completed('created');
+                } catch (PDOException $e) {
+                    error_log((string) $e);
+                    http_response_code(500);
+                    $error = 'Không thể thêm sản phẩm. Vui lòng thử lại sau.';
+                }
+            } else {
+                http_response_code(422);
             }
         }
+
+        $this->render('product_create.tpl', ['product' => $product, 'error' => $error]);
     }
-
-    $smarty = SmartyConfig::getSmarty();
-
-    $smarty->assign('error', $error);
-
-    $smarty->display('product_create.tpl');
-}
 
     public function edit(): void
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    {
+        Request::requireMethods(['GET', 'POST']);
+        $this->requireAuth();
+        if (Request::method() === 'POST') {
+            Csrf::requirePost();
+        }
 
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit;
-    }
+        $id = Request::queryInt('id');
+        if ($id <= 0) {
+            Response::redirect(Url::product());
+        }
+        $product = $this->products()->getById($id);
+        if ($product === null) {
+            throw new HttpException(404, 'Không tìm thấy sản phẩm.');
+        }
 
-    $id = (int) ($_GET['id'] ?? 0);
-
-    if ($id <= 0) {
-        header('Location: /');
-        exit;
-    }
-
-    $productModel = new Product();
-
-    $product = $productModel->getById($id);
-
-    if (!$product) {
-        http_response_code(404);
-        echo 'Không tìm thấy sản phẩm.';
-        exit;
-    }
-
-    $error = '';
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-        $name = trim($_POST['name'] ?? '');
-        $price = (float) ($_POST['price'] ?? 0);
-        $quantity = (int) ($_POST['quantity'] ?? 0);
-        $description = trim($_POST['description'] ?? '');
-
-        if ($name === '') {
-
-            $error = 'Vui lòng nhập tên sản phẩm.';
-
-        } elseif ($price < 0) {
-
-            $error = 'Giá sản phẩm không hợp lệ.';
-
-        } elseif ($quantity < 0) {
-
-            $error = 'Số lượng không hợp lệ.';
-
-        } else {
-
-            try {
-
-                $productModel->update(
-                    $id,
-                    $name,
-                    $price,
-                    $quantity,
-                    $description
-                );
-
-                $_SESSION['success'] = 'updated';
-
-                header('Location: /');
-                exit;
-
-            } catch (\PDOException $e) {
-
-                $error = 'Không thể cập nhật sản phẩm. Vui lòng kiểm tra lại dữ liệu.';
+        $error = '';
+        if (Request::method() === 'POST') {
+            $values = ProductInput::fromArray($_POST);
+            $product = array_replace($product, $values);
+            $error = ProductInput::error($values);
+            if ($error === '') {
+                try {
+                    $this->products()->update(
+                        $id, $values['name'], $values['price'], (int) $values['quantity'], $values['description']
+                    );
+                    $this->completed('updated');
+                } catch (PDOException $e) {
+                    error_log((string) $e);
+                    http_response_code(500);
+                    $error = 'Không thể cập nhật sản phẩm. Vui lòng thử lại sau.';
+                }
+            } else {
+                http_response_code(422);
             }
         }
 
-        // Giữ lại dữ liệu người dùng vừa nhập nếu có lỗi
-        $product['name'] = $name;
-        $product['price'] = $price;
-        $product['quantity'] = $quantity;
-        $product['description'] = $description;
+        $this->render('product_edit.tpl', ['product' => $product, 'error' => $error]);
     }
 
-    $smarty = SmartyConfig::getSmarty();
-
-    $smarty->assign('product', $product);
-    $smarty->assign('error', $error);
-
-    $smarty->display('product_edit.tpl');
-}
-
-   public function delete(): void
-{
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    public function delete(): void
+    {
+        Request::requireMethods(['POST']);
+        $this->requireAuth();
+        Csrf::requirePost();
+        $id = Request::postInt('id');
+        if ($id <= 0) {
+            Response::redirect(Url::product());
+        }
+        if (!$this->products()->delete($id)) {
+            throw new HttpException(404, 'Không tìm thấy sản phẩm.');
+        }
+        $this->completed('deleted');
     }
 
-    if (!isset($_SESSION['user_id'])) {
-        header('Location: /login');
-        exit;
+    private function completed(string $action): never
+    {
+        $_SESSION['success'] = $action;
+        Response::redirect(Url::product());
     }
-
-    $id = (int) ($_POST['id'] ?? 0);
-
-    if ($id <= 0) {
-        header('Location: /');
-        exit;
-    }
-
-    $productModel = new Product();
-
-    $product = $productModel->getById($id);
-
-    if (!$product) {
-        http_response_code(404);
-        echo 'Không tìm thấy sản phẩm.';
-        exit;
-    }
-
-    $productModel->delete($id);
-
-    $_SESSION['success'] = 'deleted';
-
-    header('Location: /');
-    exit;
-}
 }
